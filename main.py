@@ -1,16 +1,20 @@
 import os,sys
 import re
 
+sys.setrecursionlimit(20000)
+
 import_table = {}
 
 class index_holder:
 	idx = 0
 
 def lex_parse(data, handler, index):
-	print 'data is "', data[index.idx:], '"'
+	#print 'data is "', data[index.idx:index.idx + 50], '"'
 	for hnd, action in handler:
 		res = hnd.match(data[index.idx:])
+ 
 		if res:
+			print 'matched: ', res.group(0)
 			index.idx += res.span()[1]
 			return action(res, data, handler, index)
 
@@ -26,8 +30,12 @@ lex_handlers_comment = [
 	(re.compile(r'[^\*\\]+') , lambda res, data, hnd, index: ['literal', res.group(0)]),
 ]
 
+lex_handlers_single_comment = [
+	(re.compile('[^\n]+'), lambda res, data, hnd, index: [ 'literal', res.group(0) ]),
+]
+
 lex_handlers = [  
-	(re.compile('/\*') , 
+	(re.compile('/\*') , sys.setrecursionlimit
 		lambda res, data, hnd, index: 
 		[ 
                   [
@@ -35,6 +43,16 @@ lex_handlers = [
 			lex_parse(data, lex_handlers_comment, index),
 			close_scope(index, 2, "*/") 
 		  ]
+		] + lex_parse(data, hnd, index)
+	),
+	(re.compile('//'),
+		lambda res, data, hnd, index:
+		[
+			[
+				'//',
+				lex_parse(data, lex_handlers_single_comment, index),
+				close_scope(index, 2, None)
+			]
 		] + lex_parse(data, hnd, index)
 	),
 	(re.compile('\('),
@@ -64,7 +82,7 @@ lex_handlers = [
 		] + lex_parse(data, hnd, index)	
 	),
 
-	(re.compile(r'\+|-|=|\*|/|>|<|!|&|%|\|'), 
+	(re.compile(r'\+|-|=|\*|/|>|<|!|&|%|\|:|\.'), 
 		lambda res, data, hnd, index:
 		[ ( 'operator',
 		    res.group(0)) ] +
@@ -77,11 +95,11 @@ lex_handlers = [
 	(re.compile('\)|\}'), lambda res, data, hnd, index: close_scope(index, 0, [res.group(0)])),
 ]
 
-def parse( filename ):
+def parse( filename, hnd, idx ):
 	f = open(filename, "r")
 	data = f.read()	
 	
-	lex_parse(data, lex_handlers)
+	lex_parse(data, hnd, idx)
 
 test = '''
 
@@ -97,7 +115,7 @@ int1ovelha2cocada2 1.123 main (ovelha, lhama, macaco) {
 '''
 
 if __name__ == "__main__":
-	#lex = parse_lex(sys.args[0])
 	index = index_holder()
-	print lex_parse(test, lex_handlers, index)	
+	lex = parse(sys.argv[1], lex_handlers, index)
+	print lex	
 	
