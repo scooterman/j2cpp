@@ -135,7 +135,12 @@ def methodDeclaration(rule):
 	rule.astAttrs = { 'methodName' : Identifier, 'rest' : methodDeclaratorRest }
 
 def fieldDeclaration(rule):
-	rule | (modifiers, interfaceMemberDecl) | ';'
+	rule | (commas(variableDeclarator), ';')
+	rule.astAttrs = { 'variables' : variableDeclarator }
+
+def variableDeclarator(rule):
+	rule | (variableDeclaratorId, ['=', variableInitializer])
+	rule.astAttrs = { 'name' : variableDeclaratorId, 'initializer' : variableInitializer }
 
 def interfaceBodyDeclaration(rule):
 	rule | (modifiers, interfaceMemberDecl) | ';'
@@ -190,9 +195,11 @@ def variableDeclaratorId(rule):
 
 def variableInitializer(rule):
 	rule |  arrayInitializer | expression
+	rule.astAttrs = { 'arrayInitializer' : arrayInitializer, 'expression' : expression }
 
 def arrayInitializer(rule):
-	rule | ('{', star(commas(variableInitializer)), '}')
+	rule | ('{', [ commas(variableInitializer) ], '}')
+	rule.astAttrs = { 'variableInitializer' : variableInitializer }
 
 def modifier(rule):
 	rule | 'public' |'protected'\
@@ -430,6 +437,7 @@ def constantExpression(rule):
 
 def expression(rule):
 	rule | ( conditionalExpression, [assignmentOperator, expression])
+	rule.astAttrs = { 'conditionalExpression' : conditionalExpression , 'assignmentOperator' : assignmentOperator, 'expression' : expression }
 
 def assignmentOperator(rule):
 	rule | '=' \
@@ -443,8 +451,9 @@ def assignmentOperator(rule):
 	    |   '%=' \
 	    | '<<=' \
 	    | '>>>=' \
-	    | '>>=' \
-	    
+	    | '>>=' 
+	rule.astAttrs = { 'value' : ID }
+
 def conditionalExpression(rule):
 	rule | (conditionalOrExpression, [ '?', expression, ':', expression ])
 

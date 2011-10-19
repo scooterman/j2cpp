@@ -12,4 +12,4 @@ if __name__ == '__main__':
 	for cls in translated.classes:
 		print 'methods: ', cls.methods
 		print 'class name: ', cls.name
-	
+		print 'variables:', cls.variables

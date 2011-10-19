@@ -45,6 +45,7 @@ def translate_importDeclaration(node, scope):
 @Java.translates(ast.Normalclassdeclaration)
 def translate_normalClassDeclaration(node, scope):
 	scope.name = Java.translate(node.className)
+	print 'normalclassdeclaration', scope.name
 	scope.body = Java.translate(node.body, scope)
 
 ''' contains a class body declaration
@@ -60,6 +61,7 @@ Body declaration
 '''
 @Java.translates(ast.Classbody)
 def translate_Classbody(node, scope):
+	print 'classbody'
 	scope.class_def = scope
 	scope.variables = []
 	scope.methods = []
@@ -101,19 +103,36 @@ def translate_memberDecl(node, scope):
 	elif node.classDeclaration:
 		return Java.translate(node.classDeclaration, scope)
 	elif node.memberDeclaration:
-		print 'memberdeclaration'
 		return Java.translate(node.memberDeclaration, scope)
 	elif node.constructorDecl:
 		pass
 
 @Java.translates(ast.Memberdeclaration)
 def translate_Memberdeclaration(node, scope):
+	print 'memberdeclaration: is method?', node.methodDeclaration, 'isfield? ', node.fieldDeclaration
 	if node.methodDeclaration:
 		method = type('MethodDeclaration', (), {})
 		method.return_type = Java.translate(node.type, scope)
 		Java.translate(node.methodDeclaration, method)
 		scope.methods.append(method)
 		print 'member declaration scope:', scope.methods
+		return method
+	elif node.fieldDeclaration:
+		variables = type('VariablesDeclaration', (), {})
+		variables.declarations = []
+		Java.translate(node.fieldDeclaration, variables)
+		scope.variables.append(variables)
+		return variables
+		
+
+@Java.translates(ast.Fielddeclaration)
+def translate_Fielddeclaration(node, scope):
+	print 'fielddeclaration:', node.variables
+	for variable in node.variables:
+		print variable
+		v = type('Variable', (), {})
+		Java.translate(variable, v)
+		scope.declarations.append(v)
 
 @Java.translates(ast.Type)
 def translate_Type(node, scope):
@@ -198,3 +217,22 @@ def translate_Block(node, scope):
 def translate_Identifier(node, scope):
 	print 'identifier', node.id
 	return str(node.id)
+
+@Java.translates(ast.Variableinitializer)
+def translate_Variableinitializer(node, scope):
+	print 'variable initializer'
+	if node.arrayInitializer:
+		Java.translate(node.arrayInitializer, scope)
+	elif node.expression:
+		Java.translate(node.expression, scope)
+
+@Java.translates(ast.Expression)
+def translate_Expression(node, scope):
+	print 'expression'
+	expr = node.conditionalExpression 
+	while type(expr[0]) == list:
+		expr = expr.pop()
+
+	expression = type('Expression', (), {})
+	expression.first = expr
+	
