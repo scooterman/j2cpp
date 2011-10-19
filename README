@@ -1,0 +1,11 @@
+This is the new release of j2cpp, a java-to-c++ conversor.
+
+Libraries that you'll need:
+
+codetalker:
+https://github.com/jabapyth/codetalker
+
+that's it.
+
+usage:
+./main.py JavaClass
