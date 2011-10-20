@@ -241,7 +241,8 @@ def primitiveType(rule):
 	    |   'long' \
 	    |   'float' \
 	    |   'double'
-
+	rule.astAttrs = { 'id' : ID }
+	    
 def variableModifier(rule):
 	rule | 'final' | annotation
 	rule.astAttrs = { 'final' : ID, 'annotation' : annotation }
@@ -262,13 +263,13 @@ def formalParameters(rule):
 	rule.astAttrs = { 'parameters' : formalParameterDecls }
 
 def formalParameterDecls(rule):
-	rule | formalParameterVariable | formalParameterVariableElipsis
+	rule | localVariableDeclaration | formalParameterVariableElipsis
 	
 def formalParameterVariableElipsis(rule):
 	rule | (variableModifiers, '...', variableDeclaratorId)
 	rule.astAttrs = { 'modifiers' : variableModifiers , 'name' : variableDeclaratorId }
 
-def formalParameterVariable(rule):
+def localVariableDeclaration(rule):
 	rule | (variableModifiers, _type, variableDeclaratorId)
 	rule.astAttrs = { 'modifiers' : variableModifiers, 'type' : _type, 'name' : variableDeclaratorId }
 
@@ -352,18 +353,13 @@ def block(rule):
 	rule.astAttrs = { 'blockStatement' : [blockStatement] }
 
 def blockStatement(rule):
-	rule | localVariableDeclarationStatement \
-    		|   classOrInterfaceDeclaration \
-   		|   statement
+	rule | (localVariableDeclaration, ';') \
+		 | classOrInterfaceDeclaration \
+		 | statement
+
 	rule.astAttrs = { 'vardec' : localVariableDeclarationStatement,
 			  'classdec' : classOrInterfaceDeclaration,
 			  'statement' : statement }
-
-def localVariableDeclarationStatement(rule):
-	rule | (localVariableDeclaration, ';')
-
-def localVariableDeclaration(rule):
-	rule | (variableModifiers, _type, variableDeclarators)
 
 def variableModifiers(rule):
 	rule | star(variableModifier)
@@ -371,8 +367,8 @@ def variableModifiers(rule):
 def statement(rule):
 	rule | block \
 	     | (ASSERT, expression, [':', expression], ';') \
-             | ('if', parExpression, statement, ['else', statement]) \
-    	     | ('for', '(', forControl, ')', statement) \
+         | ('if', parExpression, statement, ['else', statement]) \
+		 | ('for', '(', forControl, ')', statement) \
 	     | ('while', parExpression, statement) \
 	     | ('do', statement, 'while', parExpression, ';') \
 	     | ('try', 
@@ -456,64 +452,88 @@ def assignmentOperator(rule):
 
 def conditionalExpression(rule):
 	rule | (conditionalOrExpression, [ '?', expression, ':', expression ])
-
+	
+	rule.astAttrs = { 'condor' : conditionalOrExpression , 'cond' : [expression] }
+	
 def conditionalOrExpression(rule):
 	rule | (conditionalAndExpression, star(('|','|'), conditionalAndExpression ))
-
+	rule.astAttrs = { 'condand' : [conditionalAndExpression] }
+	
 def conditionalAndExpression(rule):
 	rule | (inclusiveOrExpression, star( ('&','&') , inclusiveOrExpression ))
-
+	rule.astAttrs = { 'inclusiveor' : [ inclusiveOrExpression ] }
+	
 def inclusiveOrExpression(rule):
 	rule | (exclusiveOrExpression, star( '|', exclusiveOrExpression ))
-
+	rule.astAttrs = { 'exclusiveor' : [ exclusiveOrExpression ] }
+	
 def exclusiveOrExpression(rule):
 	rule | (andExpression, star( '^', andExpression ))
-
+	rule.astAttrs = { 'andexpr' : [ andExpression ] }
+	
 def andExpression(rule):
 	rule | (equalityExpression, star( '&', equalityExpression ))
-
+	rule.astAttrs = { 'equalexpr' : [ equalityExpression ] }
+	
 def equalityExpression(rule):
 	rule | (instanceOfExpression, star( _or(('=','=') , ('!', '=')), instanceOfExpression ))
-
+	rule.astAttrs = { 'instanceof' : [ instanceOfExpression ] , 'comp' : [SYMBOL] }
+	
 def instanceOfExpression(rule):
 	rule | (relationalExpression, ['instanceof', _type])
-
+	rule.astAttrs = { 'relational' : relationalExpression, 'type' : _type }
+	
 def relationalExpression(rule):
 	rule | (shiftExpression, star( relationalOp, shiftExpression ))
-
+	rule.astAttrs = { 'shift' :  [shiftExpression], 'relationalOp' : [relationalOp] }
+	
 def relationalOp(rule):
 	rule | ('<','=') | ('>','=') | ('<','>')
-
+	rule.astAttrs = { 'op' : [SYMBOL]  }
+	
 def shiftExpression(rule):
 	rule | (additiveExpression, star( shiftOp, additiveExpression ))
-
+	rule.astAttrs = { 'additive' : [ additiveExpression ] , 'shift' : [shiftOp] }
+	
 def shiftOp(rule):
 	rule | ('<','<') | ('>','>','>') | ('>','>') 
+	rule.astAttrs = { 'op' : [SYMBOL] }
 
 def additiveExpression(rule):
 	rule | (multiplicativeExpression, star( _or('+' , '-'), multiplicativeExpression ))
-
+	rule.astAttrs = { 'mulexpr' : [multiplicativeExpression], 'op' : [SYMBOL] }
+	
 def multiplicativeExpression(rule):
 	rule | (unaryExpression, star(_or( '*' , '/' , '%' ), unaryExpression ))
+	rule.astAttrs = { 'unary' : [unaryExpression] , 'op' : [SYMBOL] }
 
 def unaryExpression(rule):
 	rule | ('+', unaryExpression) \
-    	     | ('-', unaryExpression) \
+	     | ('-', unaryExpression) \
 	     | ('+','+', unaryExpression) \
 	     | ('-','-', unaryExpression) \
 	     | unaryExpressionNotPlusMinus
+	rule.astAttrs = { 'symbol' : [SYMBOL], 'unary' : unaryExpression, 'notplusminus' : unaryExpressionNotPlusMinus }
 
 def unaryExpressionNotPlusMinus(rule):
 	rule | ('~', unaryExpression) \
     |   ('!', unaryExpression) \
     |   (castExpression) \
-    |   (primary, star(selector), [_or(('+','+'),('-','-'))])
+    |   primaryExpression
+    
+	rule.astAttrs = { 'symbol' : SYMBOL, 'unary' : unaryExpression, 'cast' : castExpression, 'primary' : primaryExpression }
 
+def primaryExpression(rule):
+	rule | (primary, star(selector), [_or(('+','+'),('-','-'))])
+	rule.astAttrs = { 'primary' : primary, 'selector' : [selector], 'op' : [SYMBOL] }
 
 def castExpression(rule):
 	rule | ('(', primitiveType, ')', unaryExpression) \
 	     | ('(', _or(_type , expression), ')', unaryExpressionNotPlusMinus)
-
+	
+	rule.astAttrs = { 'primitive' : primitiveType, 'unary' : unaryExpression, 'type' : _type, 'expr' : expression, 'unarynotplus' : unaryExpressionNotPlusMinus }
+	
+	
 def primary(rule):
 	rule | parExpression \
     |   ('this', star('.', Identifier), [identifierSuffix]) \
@@ -524,6 +544,14 @@ def primary(rule):
     |   (primitiveType, star('[', ']'), '.', 'class') \
     |   ('void', '.', 'class')
 
+	rule.astAttrs = { 'parExpression' : parExpression, 
+					  'superSuffix' : superSuffix, 
+					  'literal' : literal, 
+					  'creator' : creator,
+					  'id' : [Identifier],
+					  'primitive' : primitiveType,
+					  'suffix' : identifierSuffix } 
+    
 def identifierSuffix(rule):
 	rule | ( plus('[', ']'), '.', 'class') \
     |   plus('[', expression, ']') \
@@ -533,11 +561,11 @@ def identifierSuffix(rule):
     |   ('.', 'this') \
     |   ('.', 'super', arguments) \
     |   ('.', 'new', innerCreator) 
-
+    
+	rule.astAttrs = { 'ids' : [ID], 'args' : arguments, 'innerCreator' : innerCreator }
 
 def creator(rule):
-	rule | (nonWildcardTypeArguments, createdName, classCreatorRest) \
-    |   (createdName , _or(arrayCreatorRest , classCreatorRest))
+	rule | (nonWildcardTypeArguments, createdName, classCreatorRest) |   (createdName , _or(arrayCreatorRest , classCreatorRest))
 
 def createdName(rule):
 	rule | classOrInterfaceType \

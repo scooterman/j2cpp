@@ -228,16 +228,242 @@ def translate_Variableinitializer(node, scope):
 @Java.translates(ast.Expression)
 def translate_Expression(node, scope):
 	print 'expression'
-	expr = node.conditionalExpression 
 	
-	while type(expr[0]) == list:
-		expr = expr.pop()
-
 	expression = type('Expression', (), {})
-	expression.first = expr
+	expression.value = ''
+	
+	Java.translate(node.conditionalExpression, expression)
+	
 	if node.assignmentOperator:
-		node.operator = Java.translate(node.assignmentOperator, expression)
+		expression.value += Java.translate(node.assignmentOperator, expression)
 
 	if node.expression:
-		Java.translate(node.expression, expression)
+		expression.value += Java.translate(node.expression, expression)
+	
+	scope.expression = expression
 
+'''
+def conditionalExpression(rule):
+	rule | (conditionalOrExpression, [ '?', expression, ':', expression ])
+
+	rule.astAttrs = { 'condor' : conditionalOrExpression , 'cond' : [expression] }
+'''
+@Java.translates(ast.Conditionalexpression)
+def translate_Conditionalexpression(node, scope):
+	value = ''
+	value += Java.translate(node.condor, scope)
+	
+	if node.cond:
+		value += ' ? {0} : {1}'.format(Java.translate(node.cond[0]),Java.translate(node.cond[1]))
+	
+	return value
+
+@Java.translates(ast.Conditionalorexpression)
+def translate_Conditionalorexpression(node, scope):
+	value = ''
+	
+	if node.condand[0]:
+		value += Java.translate(node.condand[0], scope)
+		
+		if len(node.condand) > 1:
+			value += ' || '
+			for cond in node.condand[1:]:
+				value += Java.translate(cond, scope)
+
+	return value
+	
+@Java.translates(ast.Conditionalandexpression)
+def translate_conditionalAndExpression(node, scope):
+	value = ''
+
+	if node.inclusiveor:
+		value += Java.translate(node.inclusiveor[0], scope)
+		
+		if len(node.inclusiveor) > 1:
+			value += ' && '
+			for cond in node.inclusiveor[1:]:
+				value += Java.translate(cond, scope)
+	return value
+
+@Java.translates(ast.Inclusiveorexpression)
+def translate_Inclusiveorexpression(node, scope):
+	value = ''
+	if node.exclusiveor:
+		value = Java.translate(node.exclusiveor[0], scope)
+		
+		print 'exclusive or value: "{0}"'.format(value)
+		
+		if len(node.exclusiveor) > 1:
+			value += ' | '
+			for cond in node.exclusiveor[1:]:
+				value += Java.translate(cond)
+	
+	return value
+	
+
+@Java.translates(ast.Exclusiveorexpression)
+def translate_Exclusiveorexpression(node, scope):
+	value = ''
+	if node.andexpr:
+		value = Java.translate(node.andexpr[0], scope)
+		
+		if len(node.andexpr) > 1:
+			value += ' ^ '
+			for cond in node.andexpr[1:]:
+				value += Java.translate(cond)
+	
+	return value
+
+
+@Java.translates(ast.Andexpression)
+def translate_Andexpression(node, scope):
+	value = ''
+	if node.equalexpr:
+		value = Java.translate(node.equalexpr[0], scope)
+		
+		if len(node.equalexpr) > 1:
+			value += ' & '
+			for cond in node.equalexpr[1:]:
+				value += Java.translate(cond)
+	
+	return value
+	
+
+@Java.translates(ast.Equalityexpression)
+def translate_Equalityexpression(node, scope):
+	value = ''
+	if node.instanceof:
+		value = Java.translate(node.instanceof[0], scope)
+		
+		if len(node.instanceof) > 1:
+			value += ' {0} '.format(map(lambda x: str(x) , node.comp))
+			
+			for cond in node.instanceof[1:]:
+				value += Java.translate(cond)
+	
+	return value
+
+@Java.translates(ast.Instanceofexpression)
+def translate_Instanceofexpression(node, scope):
+	value = ''
+	if node.relational:
+		value = Java.translate(node.relational, scope)
+		
+		if node.type:
+			value += ' instanceof ' + Java.translate(node.type)
+
+	return value
+
+@Java.translates(ast.Relationalexpression)
+def translate_Relationalexpression(node, scope):
+	value = ''
+	if node.shift:
+		value = Java.translate(node.shift[0], scope)
+		
+		if node.relationalOp:
+			for op, se in zip(node.relationalOp, node.shift[1:]):
+				value += Java.translate(op, scope) + ' ' + java.translate(se, scope)
+
+	return value
+
+@Java.translates(ast.Shiftexpression)
+def translate_Shiftexpression(node, scope):
+	value = ''
+	if node.additive:
+		value = Java.translate(node.additive[0], scope)
+		
+		if node.shift:
+			for op, se in zip(node.shift, node.additive[1:]):
+				value += Java.translate(op, scope) + ' ' + java.translate(se, scope)
+
+	return value
+
+@Java.translates(ast.Additiveexpression)
+def translate_Additiveexpression(node, scope):
+	value = ''
+	print dir(node)
+	if node.mulexpr:
+		value = Java.translate(node.mulexpr[0], scope)
+
+		if node.op:
+			for op, se in zip(node.op, node.mulexpr[1:]):
+				value += Java.translate(op, scope) + ' ' + java.translate(se, scope)
+
+	return value
+
+@Java.translates(ast.Multiplicativeexpression)
+def translate_Multiplicativeexpression(node, scope):
+	value = ''
+	if node.unary:
+		value = Java.translate(node.unary[0], scope)
+
+		if node.op:
+			for op, se in zip(node.op, node.unary[1:]):
+				value += Java.translate(op, scope) + ' ' + java.translate(se, scope)
+
+	return value
+	
+	
+@Java.translates(ast.Unaryexpression)
+def translate_Unaryexpression(node, scope):
+	value = ''
+	if node.symbol:
+		value = ''.join(node.symbol) + Java.translate(node.unary)
+	elif node.notplusminus:
+		value = Java.translate(node.notplusminus)
+	
+	return value
+	
+@Java.translates(ast.Unaryexpressionnotplusminus)
+def translate_unaryExpressionNotPlusMinus(node, scope):
+	value = ''
+	if node.symbol:
+		value = ''.join(node.symbol) + Java.translate(node.unary, scope)
+	elif node.cast:
+		value = Java.translate(node.cast, scope)
+	elif node.primary:
+		value = Java.translate(node.primary, scope)
+		
+	return value
+
+@Java.translates(ast.Primaryexpression)
+def translate_Primaryexpression(node, scope):
+	value = ''
+	if node.primary:
+		value = Java.translate(node.primary, scope)
+	
+	if node.selector:
+		for s in node.selector:
+			value += Java.translate(s, scope)
+	
+	if node.op:
+		for op in node.op:
+			value = Java.translate(op, scope)
+		
+	return value
+
+@Java.translates(ast.Primary)
+def translate_primary(node, scope):
+	if node.parExpression:
+		return Java.translate(node.parExpression, scope)
+	elif node.superSuffix:
+		return 'super ' + Java.translate(node.superSuffix, scope)
+	elif node.literal:
+		return str(node.literal)
+	elif node.creator:
+		return 'new ' + Java.translate(node.creator)
+	elif node.id:
+		value = Java.translate(node.id[0], scope)
+		if len(node.id) > 1:
+			for i in node.id:
+				value += '::' + Java.translate(i, scope)
+		if node.suffix:
+			value += Java.translate(node.suffix, scope)
+
+	elif node.primitive:
+		return Java.translate(node.primitive)
+
+		
+@Java.translates(ast.Blockstatement)
+def translate_Blockstatement(node, scope):
+	
