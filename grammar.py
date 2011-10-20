@@ -441,27 +441,27 @@ def expression(rule):
 
 def assignmentOperator(rule):
 	rule | '=' \
-	    |   '+=' \
-	    |   '-=' \
-	    |   '*=' \
-	    |   '/=' \
-	    |   '&=' \
-	    |   '|=' \
-	    |   '^=' \
-	    |   '%=' \
-	    | '<<=' \
-	    | '>>>=' \
-	    | '>>=' 
-	rule.astAttrs = { 'value' : ID }
+	    |   ('+','=') \
+	    |   ('-','=') \
+	    |   ('*','=') \
+	    |   ('/','=') \
+	    |   ('&','=') \
+	    |   ('|','=') \
+	    |   ('^','=') \
+	    |   ('%','=') \
+	    |   ('<','<','=') \
+	    |   ('>','>','>','=') \
+	    |   ('>','>','=') 
+	rule.astAttrs = { 'value' : [ID] }
 
 def conditionalExpression(rule):
 	rule | (conditionalOrExpression, [ '?', expression, ':', expression ])
 
 def conditionalOrExpression(rule):
-	rule | (conditionalAndExpression, star('||', conditionalAndExpression ))
+	rule | (conditionalAndExpression, star(('|','|'), conditionalAndExpression ))
 
 def conditionalAndExpression(rule):
-	rule | (inclusiveOrExpression, star( '&&' , inclusiveOrExpression ))
+	rule | (inclusiveOrExpression, star( ('&','&') , inclusiveOrExpression ))
 
 def inclusiveOrExpression(rule):
 	rule | (exclusiveOrExpression, star( '|', exclusiveOrExpression ))
@@ -473,7 +473,7 @@ def andExpression(rule):
 	rule | (equalityExpression, star( '&', equalityExpression ))
 
 def equalityExpression(rule):
-	rule | (instanceOfExpression, star( _or('==' , '!='), instanceOfExpression ))
+	rule | (instanceOfExpression, star( _or(('=','=') , ('!', '=')), instanceOfExpression ))
 
 def instanceOfExpression(rule):
 	rule | (relationalExpression, ['instanceof', _type])
@@ -482,13 +482,13 @@ def relationalExpression(rule):
 	rule | (shiftExpression, star( relationalOp, shiftExpression ))
 
 def relationalOp(rule):
-	rule | '<=' | '>=' | '<>'
+	rule | ('<','=') | ('>','=') | ('<','>')
 
 def shiftExpression(rule):
 	rule | (additiveExpression, star( shiftOp, additiveExpression ))
 
 def shiftOp(rule):
-	rule | '<<' | '>>>' | '>>' 
+	rule | ('<','<') | ('>','>','>') | ('>','>') 
 
 def additiveExpression(rule):
 	rule | (multiplicativeExpression, star( _or('+' , '-'), multiplicativeExpression ))
@@ -499,15 +499,15 @@ def multiplicativeExpression(rule):
 def unaryExpression(rule):
 	rule | ('+', unaryExpression) \
     	     | ('-', unaryExpression) \
-	     | ('++', unaryExpression) \
-	     | ('--', unaryExpression) \
+	     | ('+','+', unaryExpression) \
+	     | ('-','-', unaryExpression) \
 	     | unaryExpressionNotPlusMinus
 
 def unaryExpressionNotPlusMinus(rule):
 	rule | ('~', unaryExpression) \
     |   ('!', unaryExpression) \
     |   (castExpression) \
-    |   (primary, star(selector), [_or('++','--')])
+    |   (primary, star(selector), [_or(('+','+'),('-','-'))])
 
 
 def castExpression(rule):
@@ -583,8 +583,8 @@ def Identifier(rule):
 	rule.astAttrs = { 'id' : ID }
 
 class SYMBOL(CharToken):
-    chars = '{},[]:.;()='
-    num = 11
+    chars = '{},[]:.;()=|+*'
+    num = len(chars)
 
 java_grammar = Grammar(start=compilationUnit,
                   tokens=[SYMBOL],

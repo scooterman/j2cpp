@@ -34,7 +34,6 @@ def translate_class_or_interface_decl(node, scope):
 		df = type('InterfaceDefinition', (), {})
 		Java.translate(node.interfaceDec[0], df)
 
-	print dir(df)
 	df.modifiers = modifiers
 	return df	
 
@@ -230,9 +229,15 @@ def translate_Variableinitializer(node, scope):
 def translate_Expression(node, scope):
 	print 'expression'
 	expr = node.conditionalExpression 
+	
 	while type(expr[0]) == list:
 		expr = expr.pop()
 
 	expression = type('Expression', (), {})
 	expression.first = expr
-	
+	if node.assignmentOperator:
+		node.operator = Java.translate(node.assignmentOperator, expression)
+
+	if node.expression:
+		Java.translate(node.expression, expression)
+
